@@ -20,29 +20,6 @@
 char* gamestart = NULL;
 pid_t game_pid = 0;
 
-int is_file_empty(const char *filename) {
-    FILE *file = fopen(filename, "rb");
-    if (!file) {
-        perror("fopen failed");
-        return -1;
-    }
-    
-    int ch = fgetc(file);
-    if (ch == EOF) {
-        if (feof(file)) {
-            fclose(file);
-            return 1;
-        } else {
-            perror("fgetc failed");
-            fclose(file);
-            return -1;
-        }
-    }
-    
-    fclose(file);
-    return 0;
-}
-
 int main(int argc, char* argv[]) {
     // Handle case when not running on root
     if (getuid() != 0) {
@@ -86,19 +63,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Sanity check for dumpsys
-    if (access("/system/bin/dumpsys", F_OK) != 0) {
-        fprintf(stderr, "\033[31mFATAL ERROR:\033[0m /system/bin/dumpsys: inaccessible or not found\n");
-        log_encore(LOG_FATAL, "/system/bin/dumpsys: inaccessible or not found");
-        notify("Something wrong happening in the daemon, please check module log.");
-        exit(EXIT_FAILURE);
-    }
-
-    if (is_file_empty("/system/bin/dumpsys") == 1) {
-        fprintf(stderr, "\033[31mFATAL ERROR:\033[0m /system/bin/dumpsys was tampered by kill logger module.\n");
-        log_encore(LOG_FATAL, "/system/bin/dumpsys was tampered by kill logger module");
-        notify("Please remove your stupid kill logger module.");
-        exit(EXIT_FAILURE);
-    }
+    check_dumpsys_sanity();
 
     // Make sure only one instance is running
     if (create_lock_file() != 0) {
